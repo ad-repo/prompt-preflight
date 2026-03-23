@@ -4,6 +4,9 @@ Prompt-Preflight is a macOS menu bar app for compressing and restructuring promp
 
 It provides a two-panel editor (`Input Text` and `Response Text`), token preflight checks, provider/model switching, local history, and keychain-backed credential storage.
 
+<img width="912" height="613" alt="Screenshot 2026-03-23 at 6 52 31 PM" src="https://github.com/user-attachments/assets/7132b711-8ac8-488f-b921-cdc59e04a965" />
+<img width="894" height="573" alt="Screenshot 2026-03-23 at 6 53 31 PM" src="https://github.com/user-attachments/assets/fbfa07f9-a9de-4f40-80bb-d4a94d3d636f" />
+
 ## Features
 
 - Menu bar app (`LSUIElement`) with a popover-style main window
