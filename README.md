@@ -111,3 +111,13 @@ structure for machine parsing
 output markdown only
 no interpretation or omission
 ```
+
+## Community
+
+- Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Security policy: [SECURITY.md](SECURITY.md)
+
+## License
+
+MIT. See [LICENSE](LICENSE).
