@@ -2,6 +2,15 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# SwiftData macros require the full Xcode toolchain (not just Command Line Tools).
+XCODE_PATH="$(xcode-select -p 2>/dev/null || true)"
+if [[ "$XCODE_PATH" != *"Xcode.app"* ]]; then
+  echo "Error: Xcode is required to build this project (SwiftData macros are not included in Command Line Tools)." >&2
+  echo "Install Xcode and run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer" >&2
+  exit 1
+fi
+
 APP_NAME="Prompt-Preflight"
 EXECUTABLE_NAME="PromptPreflight"
 BUNDLE_ID="${BUNDLE_ID:-com.promptpreflight.app}"
@@ -11,13 +20,21 @@ APP_BUNDLE="$BUILD_DIR/${APP_NAME}.app"
 STAGE_DIR="$BUILD_DIR/stage"
 DMG_PATH="$BUILD_DIR/${APP_NAME}.dmg"
 
-echo "==> Building release binary"
-swift build -c release --package-path "$ROOT_DIR" --product "$EXECUTABLE_NAME"
-BIN_DIR="$(swift build -c release --package-path "$ROOT_DIR" --show-bin-path)"
-BIN_PATH="$BIN_DIR/$EXECUTABLE_NAME"
+echo "==> Building release binary via xcodebuild"
+XCODEBUILD_DIR="$ROOT_DIR/.build/xcodebuild"
+mkdir -p "$XCODEBUILD_DIR"
+xcodebuild \
+  -scheme "$EXECUTABLE_NAME" \
+  -configuration Release \
+  -destination 'platform=macOS' \
+  -derivedDataPath "$XCODEBUILD_DIR" \
+  -skipPackagePluginValidation \
+  -skipMacroValidation
 
-if [[ ! -x "$BIN_PATH" ]]; then
-  echo "Error: expected executable not found at $BIN_PATH" >&2
+BIN_PATH="$(find "$XCODEBUILD_DIR/Build/Products/Release" -name "$EXECUTABLE_NAME" -type f -not -path '*.dSYM/*' | head -1)"
+
+if [[ -z "$BIN_PATH" || ! -x "$BIN_PATH" ]]; then
+  echo "Error: expected executable not found in $XCODEBUILD_DIR/Build/Products/Release" >&2
   exit 1
 fi
 
