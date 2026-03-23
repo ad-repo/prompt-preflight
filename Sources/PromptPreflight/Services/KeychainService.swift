@@ -26,13 +26,23 @@ final class KeychainService: KeychainProviding, @unchecked Sendable {
             kSecValueData as String: data
         ]
 
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecSuccess {
+        let updateStatus = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if updateStatus == errSecSuccess {
             return
+        }
+
+        if updateStatus != errSecItemNotFound {
+            // Some keychain entries fail update paths depending on origin/ACL metadata.
+            // Replace the item to ensure save succeeds consistently.
+            let deleteStatus = SecItemDelete(query as CFDictionary)
+            guard deleteStatus == errSecSuccess || deleteStatus == errSecItemNotFound else {
+                throw KeychainError.unhandled(deleteStatus)
+            }
         }
 
         var createQuery = query
         createQuery[kSecValueData as String] = data
+        createQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         let addStatus = SecItemAdd(createQuery as CFDictionary, nil)
         guard addStatus == errSecSuccess else {
             throw KeychainError.unhandled(addStatus)

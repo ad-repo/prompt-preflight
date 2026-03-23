@@ -41,7 +41,6 @@ final class AppSettingsStore {
     }
 
     var privateMode: Bool = false
-    var keepPinnedWindowOpen: Bool = false
 
     private let defaults: UserDefaults
 
@@ -49,7 +48,9 @@ final class AppSettingsStore {
         self.defaults = defaults
 
         self.activeProvider = LLMProvider(rawValue: defaults.string(forKey: Keys.activeProvider) ?? "") ?? .openAI
-        self.openAIModel = defaults.string(forKey: Keys.openAIModel) ?? LLMProvider.openAI.defaultModel
+        let savedOpenAIModel = defaults.string(forKey: Keys.openAIModel)
+        let resolvedOpenAIModel = Self.migrateOpenAIModel(savedOpenAIModel ?? LLMProvider.openAI.defaultModel)
+        self.openAIModel = resolvedOpenAIModel
         self.geminiModel = defaults.string(forKey: Keys.geminiModel) ?? LLMProvider.gemini.defaultModel
         self.anthropicModel = defaults.string(forKey: Keys.anthropicModel) ?? LLMProvider.anthropic.defaultModel
         self.ollamaModel = defaults.string(forKey: Keys.ollamaModel) ?? LLMProvider.ollama.defaultModel
@@ -57,6 +58,10 @@ final class AppSettingsStore {
         self.saveHistory = defaults.object(forKey: Keys.saveHistory) as? Bool ?? true
         self.retentionDays = defaults.object(forKey: Keys.retentionDays) as? Int ?? 30
         self.ollamaBaseURL = defaults.string(forKey: Keys.ollamaBaseURL) ?? "http://localhost:11434"
+
+        if let savedOpenAIModel, savedOpenAIModel != resolvedOpenAIModel {
+            defaults.set(resolvedOpenAIModel, forKey: Keys.openAIModel)
+        }
     }
 
     func model(for provider: LLMProvider) -> String {
@@ -99,6 +104,17 @@ final class AppSettingsStore {
             retentionDays: retentionDays,
             ollamaBaseURL: ollamaBaseURL
         )
+    }
+}
+
+private extension AppSettingsStore {
+    static func migrateOpenAIModel(_ model: String) -> String {
+        switch model.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "gpt-4.1-mini":
+            return LLMProvider.openAI.defaultModel
+        default:
+            return model
+        }
     }
 }
 

@@ -10,26 +10,21 @@ struct MainPopoverView: View {
 
     @Environment(AppSettingsStore.self) private var settings
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismissWindow) private var dismissWindow
 
     @Query(sort: \ChatEntry.timestamp, order: .reverse) private var entries: [ChatEntry]
 
     @State private var viewModel: MainViewModel
     @State private var screen: Screen = .compose
     private let keychain: KeychainProviding
-    private let isPinnedWindow: Bool
 
     init(
         viewModel: MainViewModel = MainViewModel(
             llmService: LLMGateway(keychain: KeychainService())
         ),
-        keychain: KeychainProviding = KeychainService(),
-        isPinnedWindow: Bool = false
+        keychain: KeychainProviding = KeychainService()
     ) {
         _viewModel = State(initialValue: viewModel)
         self.keychain = keychain
-        self.isPinnedWindow = isPinnedWindow
     }
 
     var body: some View {
@@ -98,18 +93,12 @@ struct MainPopoverView: View {
                 }
             }
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.bottom, 14)
+        .padding(.top, 48)
         .frame(minWidth: 880, idealWidth: 980, minHeight: 620, idealHeight: 720)
         .background(windowBackground)
-        .background {
-            if isPinnedWindow {
-                WindowLevelConfigurator(isFloating: true)
-            }
-        }
         .onAppear {
-            if isPinnedWindow {
-                settings.keepPinnedWindowOpen = true
-            }
             viewModel.cleanupExpiredHistory(settings: settings.snapshot(), modelContext: modelContext)
             viewModel.runTokenPreflight(settings: settings)
         }
@@ -118,11 +107,6 @@ struct MainPopoverView: View {
         }
         .onChange(of: settings.activeProvider) { _, _ in
             viewModel.runTokenPreflight(settings: settings)
-        }
-        .onDisappear {
-            if isPinnedWindow {
-                settings.keepPinnedWindowOpen = false
-            }
         }
     }
 
@@ -140,44 +124,72 @@ struct MainPopoverView: View {
                 Spacer(minLength: 0)
             }
         }
-        .controlSize(.small)
     }
 
     @ViewBuilder
     private func providerAndModelControls(settings: AppSettingsStore, viewModel: MainViewModel) -> some View {
-        HStack(spacing: 8) {
-            Picker("Provider", selection: Binding(
-                get: { settings.activeProvider },
-                set: {
-                    settings.activeProvider = $0
-                    viewModel.runTokenPreflight(settings: settings)
-                }
-            )) {
-                ForEach(LLMProvider.allCases) { provider in
-                    Text(provider.displayName).tag(provider)
-                }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Label("Model Target", systemImage: "slider.horizontal.3")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Text(settings.activeProvider.displayName.uppercased())
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.primary.opacity(0.09))
+                    )
             }
-            .pickerStyle(.menu)
-            .frame(width: 160)
 
-            TextField(
-                "Model",
-                text: Binding(
-                    get: { settings.model(for: settings.activeProvider) },
+            HStack(spacing: 8) {
+                Picker("", selection: Binding(
+                    get: { settings.activeProvider },
                     set: {
-                        settings.setModel($0, for: settings.activeProvider)
+                        settings.activeProvider = $0
                         viewModel.runTokenPreflight(settings: settings)
                     }
+                )) {
+                    ForEach(LLMProvider.allCases) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 145)
+
+                TextField(
+                    "Model ID",
+                    text: Binding(
+                        get: { settings.model(for: settings.activeProvider) },
+                        set: {
+                            settings.setModel($0, for: settings.activeProvider)
+                            viewModel.runTokenPreflight(settings: settings)
+                        }
+                    )
                 )
-            )
-            .textFieldStyle(.roundedBorder)
-            .frame(width: 250)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 305)
+            }
         }
-        .padding(8)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .padding(10)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(nsColor: .controlBackgroundColor),
+                    Color(nsColor: .windowBackgroundColor)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.primary.opacity(0.14), lineWidth: 1)
         }
         .fixedSize(horizontal: true, vertical: false)
     }
@@ -195,6 +207,7 @@ struct MainPopoverView: View {
 
     @ViewBuilder
     private func actionButtons(settings: AppSettingsStore, viewModel: MainViewModel) -> some View {
+        Group {
         if viewModel.isSending {
             Button {
                 viewModel.cancelSend()
@@ -251,17 +264,8 @@ struct MainPopoverView: View {
                 .lineLimit(1)
         }
         .buttonStyle(.bordered)
-
-        Button {
-            togglePinnedWindow(settings: settings)
-        } label: {
-            Label(
-                settings.keepPinnedWindowOpen ? "Unpin" : "Pin",
-                systemImage: settings.keepPinnedWindowOpen ? "pin.fill" : "pin"
-            )
-            .lineLimit(1)
         }
-        .buttonStyle(.bordered)
+        .controlSize(.small)
     }
 
     @ViewBuilder
@@ -287,15 +291,28 @@ struct MainPopoverView: View {
     @ViewBuilder
     private func statusBar(viewModel: MainViewModel) -> some View {
         let status = statusState(viewModel: viewModel)
+        let compactMessage = compactStatusMessage(status.message)
 
-        HStack {
-            Label(status.message, systemImage: status.systemImage)
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: status.systemImage)
                 .font(.caption)
                 .foregroundStyle(status.color)
+                .padding(.top, 1)
+
+            Text(compactMessage)
+                .font(.caption)
+                .foregroundStyle(status.color)
+                .lineLimit(2)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(status.message)
+
             Spacer()
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
+        .frame(minHeight: 32, maxHeight: 52, alignment: .topLeading)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -335,16 +352,13 @@ struct MainPopoverView: View {
         return ("Ready", "circle.fill", .secondary)
     }
 
-    private func togglePinnedWindow(settings: AppSettingsStore) {
-        let shouldPin = !settings.keepPinnedWindowOpen
-        settings.keepPinnedWindowOpen = shouldPin
+    private func compactStatusMessage(_ message: String) -> String {
+        let compact = message
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if shouldPin {
-            openWindow(id: AppConstants.pinnedWindowID)
-            screen = .compose
-        } else {
-            dismissWindow(id: AppConstants.pinnedWindowID)
-        }
+        guard !compact.isEmpty else { return "Unknown status." }
+        return compact
     }
 
     @ViewBuilder

@@ -2,10 +2,33 @@ import SwiftData
 import SwiftUI
 
 @main
+@MainActor
 struct PromptPreflightApp: App {
-    @State private var settingsStore = AppSettingsStore()
+    private let settingsStore: AppSettingsStore
+    private let modelContainer: ModelContainer
+    private let mainWindowPresenter: MainWindowPresenter
+    private let hotKeyManager: GlobalHotKeyManager
 
-    private let modelContainer: ModelContainer = PromptPreflightApp.makeModelContainer()
+    init() {
+        let settingsStore = AppSettingsStore()
+        let modelContainer = PromptPreflightApp.makeModelContainer()
+        let mainWindowPresenter = MainWindowPresenter(
+            settingsStore: settingsStore,
+            modelContainer: modelContainer
+        )
+        let hotKeyManager = GlobalHotKeyManager()
+
+        hotKeyManager.onHotKeyPressed = { [weak mainWindowPresenter] in
+            Task { @MainActor in
+                mainWindowPresenter?.show()
+            }
+        }
+
+        self.settingsStore = settingsStore
+        self.modelContainer = modelContainer
+        self.mainWindowPresenter = mainWindowPresenter
+        self.hotKeyManager = hotKeyManager
+    }
 
     var body: some Scene {
         MenuBarExtra(AppConstants.appName, systemImage: "wand.and.stars") {
@@ -14,13 +37,6 @@ struct PromptPreflightApp: App {
                 .modelContainer(modelContainer)
         }
         .menuBarExtraStyle(.window)
-
-        WindowGroup(id: AppConstants.pinnedWindowID) {
-            MainPopoverView(isPinnedWindow: true)
-                .environment(settingsStore)
-                .modelContainer(modelContainer)
-        }
-        .defaultSize(width: 980, height: 720)
     }
 
     private static func makeModelContainer() -> ModelContainer {

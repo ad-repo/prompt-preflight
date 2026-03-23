@@ -15,4 +15,18 @@ final class KeychainServiceTests: XCTestCase {
         let deleted = try keychain.read(account: account)
         XCTAssertNil(deleted)
     }
+
+    func testSaveOverwritesExistingValue() throws {
+        let serviceName = "PromptPreflightTests.\(UUID().uuidString)"
+        let keychain = KeychainService(service: serviceName)
+        let account = "test-account-overwrite"
+
+        try keychain.save(value: "first", account: account)
+        try keychain.save(value: "second", account: account)
+
+        let stored = try keychain.read(account: account)
+        XCTAssertEqual(stored, "second")
+
+        try keychain.delete(account: account)
+    }
 }

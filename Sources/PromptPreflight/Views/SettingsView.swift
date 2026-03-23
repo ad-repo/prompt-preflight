@@ -183,6 +183,7 @@ struct SettingsView: View {
                     text.wrappedValue = ""
                 }
                 .buttonStyle(.borderedProminent)
+                .disabled(text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
                 Button("Clear") {
                     clearKey(provider: provider)
@@ -198,8 +199,21 @@ struct SettingsView: View {
     }
 
     private func saveKey(provider: LLMProvider, value: String) {
+        let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedValue.isEmpty else {
+            statusMessage = "Key for \(provider.displayName) is empty."
+            return
+        }
+
         do {
-            try keychain.save(value: value, account: provider.keychainAccount)
+            try keychain.save(value: trimmedValue, account: provider.keychainAccount)
+            let persisted = try keychain.read(account: provider.keychainAccount) ?? ""
+            guard !persisted.isEmpty else {
+                statusMessage = "Key save for \(provider.displayName) could not be verified."
+                refreshKeyPresence()
+                return
+            }
+
             statusMessage = "Saved key for \(provider.displayName)."
             refreshKeyPresence()
         } catch {

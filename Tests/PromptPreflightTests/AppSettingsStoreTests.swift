@@ -31,4 +31,32 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.promptOverride, custom)
         XCTAssertEqual(defaults.string(forKey: "settings.promptOverride"), custom)
     }
+
+    @MainActor
+    func testLegacyOpenAIModelIsMigratedToCurrentDefault() {
+        let suite = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("gpt-4.1-mini", forKey: "settings.openAIModel")
+
+        let store = AppSettingsStore(defaults: defaults)
+
+        XCTAssertEqual(store.openAIModel, "gpt-4o-mini")
+        XCTAssertEqual(defaults.string(forKey: "settings.openAIModel"), "gpt-4o-mini")
+    }
+
+    @MainActor
+    func testCustomOpenAIModelIsPreserved() {
+        let suite = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set("gpt-4.1", forKey: "settings.openAIModel")
+
+        let store = AppSettingsStore(defaults: defaults)
+
+        XCTAssertEqual(store.openAIModel, "gpt-4.1")
+        XCTAssertEqual(defaults.string(forKey: "settings.openAIModel"), "gpt-4.1")
+    }
 }

@@ -3,7 +3,6 @@ import CoreGraphics
 
 enum AppConstants {
     static let appName = "Prompt-Preflight"
-    static let pinnedWindowID = "PinnedMainWindow"
 
     static let defaultSystemPrompt = """
 Lossless compression task:
