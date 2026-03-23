@@ -31,72 +31,10 @@ struct MainPopoverView: View {
         @Bindable var settings = settings
         @Bindable var viewModel = viewModel
 
-        VStack(spacing: 14) {
-            switch screen {
-            case .compose:
-                topControls(settings: settings, viewModel: viewModel)
-
-                HSplitView {
-                    panelContainer(title: "Input Text") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            if let preflight = viewModel.tokenPreflight {
-                                Label("Estimated Tokens: \(preflight.estimatedTokens) / \(preflight.limitTokens)", systemImage: preflight.exceedsLimit ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(preflight.exceedsLimit ? .red : .secondary)
-                            }
-
-                            TextEditor(text: $viewModel.inputText)
-                                .font(.system(.body, design: .monospaced))
-                                .scrollContentBackground(.hidden)
-                                .padding(8)
-                                .background(textEditorBackground)
-                        }
-                    }
-
-                    panelContainer(title: "Response Text") {
-                        TextEditor(text: .constant(viewModel.responseMarkdown))
-                            .font(.system(.body, design: .monospaced))
-                            .scrollContentBackground(.hidden)
-                            .padding(8)
-                            .background(textEditorBackground)
-                            .textSelection(.enabled)
-                            .disabled(true)
-                    }
-                }
-                .frame(minHeight: 500)
-
-                statusBar(viewModel: viewModel)
-
-            case .history:
-                subscreenContainer(title: "History") {
-                    screen = .compose
-                } content: {
-                    HistoryView(
-                        entries: entries,
-                        onSelect: { entry in
-                            viewModel.load(entry: entry, settings: settings)
-                            screen = .compose
-                        },
-                        onDone: nil
-                    )
-                }
-
-            case .settings:
-                subscreenContainer(title: "Settings") {
-                    screen = .compose
-                } content: {
-                    SettingsView(
-                        keychain: keychain,
-                        showDoneButton: false
-                    )
-                    .environment(settings)
-                }
-            }
-        }
+        contentView(settings: settings, viewModel: viewModel)
         .padding(.horizontal, 14)
-        .padding(.bottom, 14)
-        .padding(.top, 48)
-        .frame(minWidth: 880, idealWidth: 980, minHeight: 620, idealHeight: 720)
+        .padding(.vertical, 16)
+        .frame(minWidth: 880, idealWidth: 980, minHeight: 560, idealHeight: 700)
         .background(windowBackground)
         .onAppear {
             viewModel.cleanupExpiredHistory(settings: settings.snapshot(), modelContext: modelContext)
@@ -107,6 +45,100 @@ struct MainPopoverView: View {
         }
         .onChange(of: settings.activeProvider) { _, _ in
             viewModel.runTokenPreflight(settings: settings)
+        }
+    }
+
+    @ViewBuilder
+    private func contentView(settings: AppSettingsStore, viewModel: MainViewModel) -> some View {
+        switch screen {
+        case .compose:
+            composeView(settings: settings, viewModel: viewModel)
+        case .history:
+            subscreenContainer(title: "History") {
+                screen = .compose
+            } content: {
+                HistoryView(
+                    entries: entries,
+                    onSelect: { entry in
+                        viewModel.load(entry: entry, settings: settings)
+                        screen = .compose
+                    },
+                    onDone: nil
+                )
+            }
+        case .settings:
+            subscreenContainer(title: "Settings") {
+                screen = .compose
+            } content: {
+                SettingsView(
+                    keychain: keychain,
+                    showDoneButton: false
+                )
+                .environment(settings)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func composeView(settings: AppSettingsStore, viewModel: MainViewModel) -> some View {
+        ViewThatFits(in: .vertical) {
+            VStack(spacing: 12) {
+                topControls(settings: settings, viewModel: viewModel)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                GeometryReader { _ in
+                    editorPanels(viewModel: viewModel)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                .frame(minHeight: 220)
+
+                statusBar(viewModel: viewModel)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(spacing: 12) {
+                    topControls(settings: settings, viewModel: viewModel)
+                        .fixedSize(horizontal: false, vertical: true)
+                    editorPanels(viewModel: viewModel)
+                        .frame(minHeight: 320)
+                    statusBar(viewModel: viewModel)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .top)
+                .padding(.vertical, 1)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func editorPanels(viewModel: MainViewModel) -> some View {
+        HSplitView {
+            panelContainer(title: "Input Text") {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let preflight = viewModel.tokenPreflight {
+                        Label("Estimated Tokens: \(preflight.estimatedTokens) / \(preflight.limitTokens)", systemImage: preflight.exceedsLimit ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(preflight.exceedsLimit ? .red : .secondary)
+                    }
+
+                    TextEditor(text: $viewModel.inputText)
+                        .font(.system(.body, design: .monospaced))
+                        .scrollContentBackground(.hidden)
+                        .padding(8)
+                        .background(textEditorBackground)
+                }
+            }
+
+            panelContainer(title: "Response Text") {
+                TextEditor(text: $viewModel.responseMarkdown)
+                    .font(.system(.body, design: .monospaced))
+                    .scrollContentBackground(.hidden)
+                    .padding(8)
+                    .background(textEditorBackground)
+                    .textSelection(.enabled)
+            }
         }
     }
 
@@ -128,54 +160,36 @@ struct MainPopoverView: View {
 
     @ViewBuilder
     private func providerAndModelControls(settings: AppSettingsStore, viewModel: MainViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Label("Model Target", systemImage: "slider.horizontal.3")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-                Text(settings.activeProvider.displayName.uppercased())
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(Color.primary.opacity(0.09))
-                    )
+        HStack(spacing: 8) {
+            Picker("", selection: Binding(
+                get: { settings.activeProvider },
+                set: {
+                    settings.activeProvider = $0
+                    viewModel.runTokenPreflight(settings: settings)
+                }
+            )) {
+                ForEach(LLMProvider.allCases) { provider in
+                    Text(provider.displayName).tag(provider)
+                }
             }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 160)
 
-            HStack(spacing: 8) {
-                Picker("", selection: Binding(
-                    get: { settings.activeProvider },
+            TextField(
+                "Model ID",
+                text: Binding(
+                    get: { settings.model(for: settings.activeProvider) },
                     set: {
-                        settings.activeProvider = $0
+                        settings.setModel($0, for: settings.activeProvider)
                         viewModel.runTokenPreflight(settings: settings)
                     }
-                )) {
-                    ForEach(LLMProvider.allCases) { provider in
-                        Text(provider.displayName).tag(provider)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .frame(width: 145)
-
-                TextField(
-                    "Model ID",
-                    text: Binding(
-                        get: { settings.model(for: settings.activeProvider) },
-                        set: {
-                            settings.setModel($0, for: settings.activeProvider)
-                            viewModel.runTokenPreflight(settings: settings)
-                        }
-                    )
                 )
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 305)
-            }
+            )
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 360)
         }
-        .padding(10)
+        .padding(8)
         .background(
             LinearGradient(
                 colors: [
@@ -191,7 +205,7 @@ struct MainPopoverView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.primary.opacity(0.14), lineWidth: 1)
         }
-        .fixedSize(horizontal: true, vertical: false)
+        .frame(width: 540, alignment: .leading)
     }
 
     @ViewBuilder
