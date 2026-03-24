@@ -27,6 +27,14 @@ It provides a two-panel editor (`Input Text` and `Response Text`), token preflig
 
 ## Quick Start
 
+## Fixing "App is damaged" or "macOS cannot verify that this app is free from malware" Error
+Since the app is in beta testing and not code-signed (it costs $99 a year to sign the app and I am not sure yet I want to pay that yet) macOS Gatekeeper will block it. To fix this:
+
+Option 1: Terminal (Recommended)
+```bash
+  xattr -cr /Applications/Prompt-Preflight.app
+```
+
 1. Build and run:
 
 ```bash
