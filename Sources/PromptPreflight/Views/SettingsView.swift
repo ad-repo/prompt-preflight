@@ -67,6 +67,17 @@ struct SettingsView: View {
                             TextField("http://localhost:11434", text: $settings.ollamaBaseURL)
                                 .textFieldStyle(.roundedBorder)
                         }
+
+                        settingsRow(title: "Ollama Timeout") {
+                            Stepper(
+                                value: $settings.ollamaTimeoutSeconds,
+                                in: AppConstants.minOllamaRequestTimeoutSeconds ... AppConstants.maxOllamaRequestTimeoutSeconds,
+                                step: 15
+                            ) {
+                                Text("\(settings.ollamaTimeoutSeconds) sec")
+                            }
+                            .frame(maxWidth: 220, alignment: .leading)
+                        }
                     }
 
                     sectionCard(title: "Prompt") {

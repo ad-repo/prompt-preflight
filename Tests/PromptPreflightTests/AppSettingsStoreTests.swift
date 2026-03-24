@@ -59,4 +59,21 @@ final class AppSettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.openAIModel, "gpt-4.1")
         XCTAssertEqual(defaults.string(forKey: "settings.openAIModel"), "gpt-4.1")
     }
+
+    @MainActor
+    func testOllamaTimeoutIsLoadedAndPersisted() {
+        let suite = UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        defaults.set(240, forKey: "settings.ollamaTimeoutSeconds")
+
+        let store = AppSettingsStore(defaults: defaults)
+
+        XCTAssertEqual(store.ollamaTimeoutSeconds, 240)
+        XCTAssertEqual(store.snapshot().ollamaTimeoutSeconds, 240)
+
+        store.ollamaTimeoutSeconds = 300
+        XCTAssertEqual(defaults.object(forKey: "settings.ollamaTimeoutSeconds") as? Int, 300)
+    }
 }

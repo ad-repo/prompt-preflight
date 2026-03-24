@@ -40,6 +40,17 @@ final class AppSettingsStore {
         didSet { defaults.set(ollamaBaseURL, forKey: Keys.ollamaBaseURL) }
     }
 
+    var ollamaTimeoutSeconds: Int {
+        didSet {
+            let sanitized = Self.sanitizeOllamaTimeoutSeconds(ollamaTimeoutSeconds)
+            if ollamaTimeoutSeconds != sanitized {
+                ollamaTimeoutSeconds = sanitized
+                return
+            }
+            defaults.set(ollamaTimeoutSeconds, forKey: Keys.ollamaTimeoutSeconds)
+        }
+    }
+
     var privateMode: Bool = false
 
     private let defaults: UserDefaults
@@ -58,9 +69,16 @@ final class AppSettingsStore {
         self.saveHistory = defaults.object(forKey: Keys.saveHistory) as? Bool ?? true
         self.retentionDays = defaults.object(forKey: Keys.retentionDays) as? Int ?? 30
         self.ollamaBaseURL = defaults.string(forKey: Keys.ollamaBaseURL) ?? "http://localhost:11434"
+        let savedTimeout = defaults.object(forKey: Keys.ollamaTimeoutSeconds) as? Int
+            ?? Int(AppConstants.ollamaRequestTimeoutSeconds)
+        self.ollamaTimeoutSeconds = Self.sanitizeOllamaTimeoutSeconds(savedTimeout)
 
         if let savedOpenAIModel, savedOpenAIModel != resolvedOpenAIModel {
             defaults.set(resolvedOpenAIModel, forKey: Keys.openAIModel)
+        }
+
+        if savedTimeout != ollamaTimeoutSeconds {
+            defaults.set(ollamaTimeoutSeconds, forKey: Keys.ollamaTimeoutSeconds)
         }
     }
 
@@ -102,7 +120,8 @@ final class AppSettingsStore {
             promptOverride: promptOverride,
             saveHistory: saveHistory,
             retentionDays: retentionDays,
-            ollamaBaseURL: ollamaBaseURL
+            ollamaBaseURL: ollamaBaseURL,
+            ollamaTimeoutSeconds: ollamaTimeoutSeconds
         )
     }
 }
@@ -116,6 +135,10 @@ private extension AppSettingsStore {
             return model
         }
     }
+
+    static func sanitizeOllamaTimeoutSeconds(_ timeout: Int) -> Int {
+        min(max(timeout, AppConstants.minOllamaRequestTimeoutSeconds), AppConstants.maxOllamaRequestTimeoutSeconds)
+    }
 }
 
 private enum Keys {
@@ -128,4 +151,5 @@ private enum Keys {
     static let saveHistory = "settings.saveHistory"
     static let retentionDays = "settings.retentionDays"
     static let ollamaBaseURL = "settings.ollamaBaseURL"
+    static let ollamaTimeoutSeconds = "settings.ollamaTimeoutSeconds"
 }

@@ -58,7 +58,7 @@ protocol HTTPTransporting: Sendable {
 final class HTTPTransport: HTTPTransporting, @unchecked Sendable {
     private let session: URLSession
 
-    init(timeout: TimeInterval = AppConstants.requestTimeoutSeconds) {
+    init(timeout: TimeInterval = AppConstants.defaultRequestTimeoutSeconds) {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = timeout
         config.timeoutIntervalForResource = timeout
