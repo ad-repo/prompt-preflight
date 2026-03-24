@@ -78,9 +78,9 @@ Create a release app bundle and DMG:
 
 Optional environment variables:
 
-- `VERSION` (default `1.0.0`)
-- `BUNDLE_ID` (default `com.promptpreflight.app`)
 - `CODESIGN_IDENTITY` (if set, the app bundle is codesigned before DMG creation)
+
+App metadata and version are controlled by `Info.plist` at the repository root.
 
 Output path:
 
