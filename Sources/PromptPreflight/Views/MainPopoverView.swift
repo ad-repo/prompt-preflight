@@ -132,12 +132,18 @@ struct MainPopoverView: View {
             }
 
             panelContainer(title: "Response Text") {
-                TextEditor(text: $viewModel.responseMarkdown)
-                    .font(.system(.body, design: .monospaced))
-                    .scrollContentBackground(.hidden)
-                    .padding(8)
-                    .background(textEditorBackground)
-                    .textSelection(.enabled)
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Estimated Tokens: \(TokenEstimator.estimateTokens(for: viewModel.responseMarkdown))", systemImage: "number.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    TextEditor(text: $viewModel.responseMarkdown)
+                        .font(.system(.body, design: .monospaced))
+                        .scrollContentBackground(.hidden)
+                        .padding(8)
+                        .background(textEditorBackground)
+                        .textSelection(.enabled)
+                }
             }
         }
     }

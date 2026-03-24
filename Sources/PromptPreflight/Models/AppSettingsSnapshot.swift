@@ -7,6 +7,7 @@ struct AppSettingsSnapshot {
     var saveHistory: Bool
     var retentionDays: Int
     var ollamaBaseURL: String
+    var ollamaTimeoutSeconds: Int
 
     func model(for provider: LLMProvider) -> String {
         modelByProvider[provider, default: provider.defaultModel]
