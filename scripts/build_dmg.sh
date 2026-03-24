@@ -13,12 +13,16 @@ fi
 
 APP_NAME="Prompt-Preflight"
 EXECUTABLE_NAME="PromptPreflight"
-BUNDLE_ID="${BUNDLE_ID:-com.promptpreflight.app}"
-VERSION="${VERSION:-1.0.0}"
+APP_INFO_PLIST="$ROOT_DIR/Info.plist"
 BUILD_DIR="$ROOT_DIR/.build/dmg"
 APP_BUNDLE="$BUILD_DIR/${APP_NAME}.app"
 STAGE_DIR="$BUILD_DIR/stage"
 DMG_PATH="$BUILD_DIR/${APP_NAME}.dmg"
+
+if [[ ! -f "$APP_INFO_PLIST" ]]; then
+  echo "Error: Info.plist not found at $APP_INFO_PLIST" >&2
+  exit 1
+fi
 
 echo "==> Building release binary via xcodebuild"
 XCODEBUILD_DIR="$ROOT_DIR/.build/xcodebuild"
@@ -43,35 +47,7 @@ rm -rf "$APP_BUNDLE" "$STAGE_DIR"
 mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources" "$STAGE_DIR"
 cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 chmod +x "$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
-
-cat >"$APP_BUNDLE/Contents/Info.plist" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleDevelopmentRegion</key>
-  <string>en</string>
-  <key>CFBundleExecutable</key>
-  <string>${EXECUTABLE_NAME}</string>
-  <key>CFBundleIdentifier</key>
-  <string>${BUNDLE_ID}</string>
-  <key>CFBundleInfoDictionaryVersion</key>
-  <string>6.0</string>
-  <key>CFBundleName</key>
-  <string>${APP_NAME}</string>
-  <key>CFBundlePackageType</key>
-  <string>APPL</string>
-  <key>CFBundleShortVersionString</key>
-  <string>${VERSION}</string>
-  <key>CFBundleVersion</key>
-  <string>${VERSION}</string>
-  <key>LSMinimumSystemVersion</key>
-  <string>14.0</string>
-  <key>LSUIElement</key>
-  <true/>
-</dict>
-</plist>
-EOF
+cp "$APP_INFO_PLIST" "$APP_BUNDLE/Contents/Info.plist"
 
 if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
   echo "==> Codesigning app bundle"
