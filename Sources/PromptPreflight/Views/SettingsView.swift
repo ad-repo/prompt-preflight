@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsView: View {
@@ -162,8 +163,10 @@ struct SettingsView: View {
         }
         .background(windowBackground)
         .onAppear {
+            let activeWindow = NSApp.keyWindow
             refreshKeyPresence()
             promptDraft = settings.promptOverride
+            restoreWindowAfterSystemPrompt(activeWindow)
         }
         .onChange(of: settings.promptOverride) { _, newValue in
             if promptDraft != newValue {
@@ -210,6 +213,9 @@ struct SettingsView: View {
     }
 
     private func saveKey(provider: LLMProvider, value: String) {
+        let activeWindow = NSApp.keyWindow
+        defer { restoreWindowAfterSystemPrompt(activeWindow) }
+
         let trimmedValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedValue.isEmpty else {
             statusMessage = "Key for \(provider.displayName) is empty."
@@ -233,12 +239,24 @@ struct SettingsView: View {
     }
 
     private func clearKey(provider: LLMProvider) {
+        let activeWindow = NSApp.keyWindow
+        defer { restoreWindowAfterSystemPrompt(activeWindow) }
+
         do {
             try keychain.delete(account: provider.keychainAccount)
             statusMessage = "Cleared key for \(provider.displayName)."
             refreshKeyPresence()
         } catch {
             statusMessage = "Failed to clear key for \(provider.displayName): \(error.localizedDescription)"
+        }
+    }
+
+    private func restoreWindowAfterSystemPrompt(_ window: NSWindow?) {
+        NSApp.activate(ignoringOtherApps: true)
+        if let window {
+            window.makeKeyAndOrderFront(nil)
+        } else if let fallbackWindow = NSApp.windows.first(where: { $0.isVisible }) {
+            fallbackWindow.makeKeyAndOrderFront(nil)
         }
     }
 
